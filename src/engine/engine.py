@@ -1,13 +1,14 @@
 from prefix_tree import *
 from functions import *
 import json
+import os
 
 class SearchEngine(object):
     def __init__(self, config):
         self.config = config
         self.collection, self.titles = get_collection(self.config['dataset'], self.config['collection'])
-        self.rii = regular_inverted_index(self.config['collection'])
-        self.words = list(self.rii.keys())
+        self.words = regular_inverted_index(self.config['collection'], self.config['index'])
+        self.auxilary_index = None
         self.prefix_tree = get_prefix_tree(self.words)
         self.inverted_prefix_tree = get_inverted_prefix_tree(self.words)
         self.rotated_prefix_tree = get_rotated_prefix_tree(self.words)
@@ -22,7 +23,8 @@ class SearchEngine(object):
                 continue
 
             if self.prefix_tree.find(token):
-                answer = answer.union(self.rii[token]) if flag else answer.intersection(self.rii[token])
+                answer = answer.union(self.get_indexes_of_token(token)) \
+                    if flag else answer.intersection(self.get_indexes_of_token(token))
                 resulting_query.append(token)
                 flag = False
                 continue
@@ -47,7 +49,7 @@ class SearchEngine(object):
                         continue
                     query_part.append(word)
                     # print('adding word', word)
-                    partial_answer = partial_answer.union(self.rii[word])
+                    partial_answer = partial_answer.union(self.get_indexes_of_token(word))
                 answer = answer.union(partial_answer) if flag else answer.intersection(partial_answer)
                 resulting_query.append(query_part)
             else:
@@ -60,7 +62,7 @@ class SearchEngine(object):
                 query_part = []
                 for word in self.words:
                     if levenshtein(stoken, soundex(word)) == minDistance and word not in self.stop_words:
-                        partial_answer = partial_answer.union(self.rii[word])
+                        partial_answer = partial_answer.union(self.get_indexes_of_token(word))
                         query_part.append(word)
                 answer = answer.union(partial_answer) if flag else answer.intersection(partial_answer)
                 resulting_query.append(query_part)
@@ -78,6 +80,15 @@ class SearchEngine(object):
             collection = json.load(file)
         key = str(id)
         return None if key not in collection else collection[key]
+
+    def get_indexes_of_token(self, token):
+        file_path = os.path.join(self.config['index'], token)
+        try:
+            f = open(file_path, 'r')
+            return json.load(f)
+        except:
+            return []
+
 # if __name__ == '__main__':
 #     config = parse_config('/home/abdurasul/Repos/SearchEngine/config.json')
 #     if not isValidConfig(config):

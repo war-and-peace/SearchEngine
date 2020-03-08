@@ -132,3 +132,5 @@ dmypy.json
 dataset/
 index/
 collection/
+/index/
+/collection

@@ -70,10 +70,9 @@ def get_collection(dataset_path, collection_path):
     return ids, info
 
 
-def regular_inverted_index(collection_path):
+def regular_inverted_index(collection_path, index_path):
     inverted_index = {}
     collection = {}
-    words = []
     with open(collection_path) as file:
         collection = json.load(file)
 
@@ -90,8 +89,13 @@ def regular_inverted_index(collection_path):
                 inverted_index[word].add(id)
             else:
                 inverted_index[word] = {id}
-    print(len(inverted_index))
-    return inverted_index
+    words = []
+    for key, value in inverted_index.items():
+        words.append(key)
+        with open(path.join(index_path, key), 'w') as file:
+            json.dump(list(value), file)
+    return words
+    # return inverted_index
 
 
 def soundex(token):
