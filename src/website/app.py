@@ -1,20 +1,34 @@
 from flask import Flask, escape, request, render_template, redirect, url_for
+from engine import SearchEngine
+from functions import parse_config, isValidConfig
 
 app = Flask(__name__)
+config = parse_config('/home/abdurasul/Repos/SearchEngine/config.json')
+if not isValidConfig(config):
+    raise Exception('Invalid config')
+engine = SearchEngine(config)
 
 @app.route('/', methods=['GET'])
 def main():
-
     return render_template('main.html')
+
+@app.route('/document/<int:id>')
+def get_document(id):
+    doc = engine.get_document(id)
+    return render_template('document.html', id=id, doc=doc)
 
 @app.route('/', methods=['POST'])
 def search():
+    global engine
     query = None
     for key, value in request.form.items():
         query = value
     if query is None or query == '':
         return redirect(url_for('main'))
-    return render_template('search.html', query=query)
+    res, rquery = engine.search(query)
+    docs = engine.get_answers(res)
+    return render_template('search.html', oquery=query, rquery=rquery, docs=docs)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+
+    app.run(debug=True, threaded=True)

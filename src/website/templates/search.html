@@ -7,13 +7,23 @@
 <body>
     <div id="search-box">
         <form action="/" method="POST">
-            <input name="search" type="text" value="{{query}}"/>
+            <input name="search" type="text" value="{{oquery}}"/>
             <input type="submit" value="search"/>
         </form>
     </div>
-    <div id="results">
-        <p>Query: {{query}}</p>
+    <div id="resulting-query">
+        <p>Query: {{rquery}}</p>
         Results
+    </div>
+    <div id="result">
+        {% for doc in docs %}
+        <p>
+            <a href="/document/{{doc[0]}}">{{doc[1]}}</a>
+        </p>
+        {% endfor %}
+    </div>
+    <div class="tool-bar">
+        <a href="/">Home</a>
     </div>
 </body>
 </html>
