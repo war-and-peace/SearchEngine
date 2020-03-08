@@ -1,4 +1,6 @@
 from flask import Flask, escape, request, render_template, redirect, url_for
+import sys
+import os
 from engine import SearchEngine
 from functions import parse_config, isValidConfig
 
