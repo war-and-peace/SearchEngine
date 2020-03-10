@@ -2,17 +2,19 @@ from prefix_tree import *
 from functions import *
 import json
 import os
+import sys
 
 class SearchEngine(object):
     def __init__(self, config):
         self.config = config
         self.collection, self.titles = get_collection(self.config['dataset'], self.config['collection'])
         self.words = regular_inverted_index(self.config['collection'], self.config['index'])
-        self.auxilary_index = None
+        self.auxilary_index = {}
         self.prefix_tree = get_prefix_tree(self.words)
         self.inverted_prefix_tree = get_inverted_prefix_tree(self.words)
         self.rotated_prefix_tree = get_rotated_prefix_tree(self.words)
         self.stop_words = set(stopwords.words('english'))
+        self.deleted_postings = set()
 
     def search(self, query):
         flag = True
@@ -28,6 +30,13 @@ class SearchEngine(object):
                 resulting_query.append(token)
                 flag = False
                 continue
+
+            if token in self.auxilary_index:
+                answer = answer.union(self.auxilary_index[token]) \
+                    if flag else answer.intersection(self.auxilary_index[token])
+                flag = False
+                continue
+
             index = token.find('*')
             if index != -1:
                 possible_words = []
@@ -67,6 +76,9 @@ class SearchEngine(object):
                 answer = answer.union(partial_answer) if flag else answer.intersection(partial_answer)
                 resulting_query.append(query_part)
                 flag = False
+        for index in list(answer):
+            if index in self.deleted_postings:
+                answer.remove(index)
         return answer, resulting_query
 
     def get_answers(self, result):
@@ -89,11 +101,52 @@ class SearchEngine(object):
         except:
             return []
 
-# if __name__ == '__main__':
-#     config = parse_config('/home/abdurasul/Repos/SearchEngine/config.json')
-#     if not isValidConfig(config):
-#         raise Exception('Invalid config')
-#     engine = SearchEngine(config)
-#     res, query = engine.search('something')
-#     print(res)
-#     print(query)
+    def process_crawler_data(self, additions, deletions):
+        for posting in deletions:
+            self.deleted_postings.add(posting)
+
+        self.update_auxilary_index(additions)
+        current_size = sys.getsizeof(self.auxilary_index)
+        if current_size > int(self.config['auxilary_index_threshold']):
+            self.dump_auxilary_index()
+
+    def update_auxilary_index(self, collection):
+        for key in collection:
+            # for key, doc in collection:
+            id = int(key)
+            self.titles[str(id)] = collection[key][0]
+            for word in lemmatize(tokenize(normalize(collection[key][1]))):
+                if word in self.auxilary_index:
+                    self.auxilary_index[word].add(id)
+                else:
+                    self.auxilary_index[word] = {id}
+            for word in lemmatize(tokenize(normalize(collection[key][0]))):
+                if word in self.auxilary_index:
+                    self.auxilary_index[word].add(id)
+                else:
+                    self.auxilary_index[word] = {id}
+
+    def dump_auxilary_index(self):
+        base_dir = self.config['index']
+        for word, indexes in self.auxilary_index.items():
+            file_path = os.path.join(base_dir, word)
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as f:
+                    old_indexes = json.load(f)
+                sind = set(old_indexes)
+                for index in indexes:
+                    sind.add(index)
+                for index in self.deleted_postings:
+                    if index in sind:
+                        sind.remove(index)
+                with open(file_path, 'w') as f:
+                    json.dump(list(sind), f)
+            else:
+                sind = set(indexes)
+                for index in self.deleted_postings:
+                    if index in sind:
+                        sind.remove(index)
+                with open(file_path, 'w') as f:
+                    json.dump(list(sind), f)
+        self.auxilary_index = {}
+        self.deleted_postings = set()

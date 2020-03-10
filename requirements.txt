@@ -1,2 +1,2 @@
 flask
-beautifulsoup4
+beauhttps://github.com/war-and-peace/SearchEngine.gittifulsoup4

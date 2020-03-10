@@ -2,5 +2,7 @@
   "dataset": "/home/abdurasul/Repos/SearchEngine/dataset",
   "collection": "/home/abdurasul/Repos/SearchEngine/collection",
   "index": "/home/abdurasul/Repos/SearchEngine/index",
-  "main": "127.0.0.1:5000"
+  "main": "127.0.0.1:5000",
+  "server_url": "127.0.0.1:5000/update",
+  "auxilary_index_threshold": "500000"
 }
