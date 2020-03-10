@@ -1,3 +1,6 @@
+from functions import *
+
+
 # Prefix tree
 
 class Node(object):
@@ -35,9 +38,9 @@ class PrefixTree(object):
                 return False
             current = current.children[pos]
 
-        return current != None and current.isEnd
+        return current is not None and current.isEnd
 
-    def get_index(sefl, c):
+    def get_index(self, c):
         return 26 if c == '$' else ord(c) - ord('a')
 
     def clean_word(self, word):
@@ -81,31 +84,35 @@ class PrefixTree(object):
             answer.append(self.clean_word(prefix + suffix))
 
         return answer
+
+
 # Prefix tree:
-def get_prefix_tree(collection):
+def get_prefix_tree(dictionary):
     prefix_tree = PrefixTree()
 
-    for index in range(len(collection)):
-        for word in tokenize(normalize(collection[index])):
+    for word in dictionary:
             prefix_tree.insert(word)
     return prefix_tree
 
+
 # Inverted Prefix Tree
-def get_inverted_prefix_tree(collection):
+def get_inverted_prefix_tree(dictionary):
     inv_prefix_tree = PrefixTree()
-    for index in range(len(collection)):
-        for word in tokenize(normalize(collection[index])):
+    for word in dictionary:
+    # for index in range(len(collection)):
+    #     for word in tokenize(normalize(collection[index])):
             inv_prefix_tree.insert(word[::-1])
     return inv_prefix_tree
 
-# Prefix tree of rotated tokens
-def get_rotated_prefix_tree(collection):
-    rotated_prefix_tree = PrefixTree()
-    for index in range(len(collection)):
-        for word in tokenize(normalize(collection[index])):
-            w = word + '$'
-            for i in range(len(w)):
-                rotated_prefix_tree.insert(w)
-                w = w[1:] + w[:1]
-    return rotated_prefix_tree
 
+# Prefix tree of rotated tokens
+def get_rotated_prefix_tree(dictionary):
+    rotated_prefix_tree = PrefixTree()
+    for word in dictionary:
+    # for index in range(len(collection)):
+    #     for word in tokenize(normalize(collection[index])):
+        w = word + '$'
+        for i in range(len(w)):
+            rotated_prefix_tree.insert(w)
+            w = w[1:] + w[:1]
+    return rotated_prefix_tree

@@ -1,26 +1,39 @@
+from bs4 import BeautifulSoup
+import re
+import codecs
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from os import path
+import json
+
+
 # Helper functions: normalization, lemmatization
 
 def normalize(text):
-    # Converts text to lower string and removes numbers, punctuations, and other non-alphabetic characters, but leaving space and '*'
+    """
+    Converts text to lower string and removes numbers, punctuations,
+    and other non-alphabetic characters, but leaving space and '*'
+    """
 
     text = text.lower()
     return re.sub('( +)|(_+)', ' ', re.sub('[0-9]', '', ' '.join(re.findall("([\w]*)", text))))
 
 
-def normalizeQuery(text):
+def normalize_query(text):
     text = text.lower()
     return re.sub('( +)|(_+)', ' ', re.sub('[0-9]', '', ' '.join(re.findall("([\w\*]*)", text))))
 
 
 def tokenize(text):
-    # Breaks the text down into tokens
+    """
+    Breaks the text down into tokens
+    """
 
     return word_tokenize(text)
 
 
 def lemmatize(tokens):
-    # lemmatizes
-
     lemmatizer = WordNetLemmatizer()
     return [lemmatizer.lemmatize(x) for x in tokens]
 
@@ -33,28 +46,56 @@ def remove_stop_word(tokens):
             filtered.append(token)
     return filtered
 
-def get_collection():
-    collection = []
-    for i in range(22):
-        file_name = f'reuters/reut2-{str(i).zfill(3)}.sgm'
-        doc = ''
-        with codecs.open(file_name, 'r', encoding='utf-8', errors='ignore') as f:
+
+def get_collection(dataset_path, collection_path):
+    collection = {}
+    ids = []
+    info = {}
+    for i in range(1):
+        file_path = path.join(dataset_path, f'reut2-{str(i).zfill(3)}.sgm')
+        with codecs.open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             doc = f.read()
         soup = BeautifulSoup(doc)
-        body = soup.find_all('body')
-        for x in body:
-            collection.append(str(x)[6:-9])
-    return collection
+        reuters = soup.find_all('reuters')
+        for x in reuters:
+            id = x['newid']
+            title = str(x.find('title'))[7:-8]
+            body = str(x.find('body'))[6:-9]
+            ids.append(id)
+            info[id] = title
+            collection[id] = [title, body]
+    with open(collection_path, 'w') as fout:
+        json.dump(collection, fout)
 
-def regular_inverted_index(collection):
+    return ids, info
+
+
+def regular_inverted_index(collection_path, index_path):
     inverted_index = {}
-    for index in range(len(collection)):
-        for word in lemmatize(tokenize(normalize(collection[index]))):
+    collection = {}
+    with open(collection_path) as file:
+        collection = json.load(file)
+
+    for key in collection:
+    # for key, doc in collection:
+        id = int(key)
+        for word in lemmatize(tokenize(normalize(collection[key][1]))):
             if word in inverted_index:
-                inverted_index[word].add(index)
+                inverted_index[word].add(id)
             else:
-                inverted_index[word] = set([index])
-    return inverted_index
+                inverted_index[word] = {id}
+        for word in lemmatize(tokenize(normalize(collection[key][0]))):
+            if word in inverted_index:
+                inverted_index[word].add(id)
+            else:
+                inverted_index[word] = {id}
+    words = []
+    for key, value in inverted_index.items():
+        words.append(key)
+        with open(path.join(index_path, key), 'w') as file:
+            json.dump(list(value), file)
+    return words
+    # return inverted_index
 
 
 def soundex(token):
@@ -85,23 +126,32 @@ def soundex_inverted_index(collection):
             if w in inverted_index:
                 inverted_index[w].add(index)
             else:
-                inverted_index[w] = set([index])
+                inverted_index[w] = {index}
     return inverted_index
 
 
-def editDistance(str1, str2, m, n):
+def edit_distance(str1, str2, m, n):
     if m == 0:
         return n
     if n == 0:
         return m
 
     if str1[m - 1] == str2[n - 1]:
-        return editDistance(str1, str2, m - 1, n - 1)
+        return edit_distance(str1, str2, m - 1, n - 1)
 
-    return 1 + min(editDistance(str1, str2, m, n - 1), editDistance(str1, str2, m - 1, n),
-                   editDistance(str1, str2, m - 1, n - 1))
+    return 1 + min(edit_distance(str1, str2, m, n - 1), edit_distance(str1, str2, m - 1, n),
+                   edit_distance(str1, str2, m - 1, n - 1))
 
 
 def levenshtein(a, b):
-    return editDistance(a, b, len(a), len(b))
+    return edit_distance(a, b, len(a), len(b))
 
+def parse_config(config_path):
+    with open(config_path) as json_file:
+        return json.load(json_file)
+
+def isValidConfig(config):
+    if (config['dataset'] is None) or (config['collection'] is None) or (config['index'] is None):
+        return False
+    else:
+        return True
